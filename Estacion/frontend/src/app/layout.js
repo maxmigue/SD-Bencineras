@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Poppins } from "next/font/google";
+import Navbar from "../components/Navbar"; // 👈 Importamos componente cliente
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -15,8 +16,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es" className={poppins.variable}>
-      {/* Aplica Poppins por defecto a todo el sitio */}
-      <body className="font-poppins bg-gray-50">{children}</body>
+      <body className="font-poppins bg-gray-50 min-h-screen flex flex-col">
+        <Navbar /> {/* ✅ Navbar ahora separado y cliente */}
+        <main className="flex-1">{children}</main>
+      </body>
     </html>
   );
 }

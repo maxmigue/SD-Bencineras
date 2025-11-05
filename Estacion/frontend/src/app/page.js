@@ -105,12 +105,6 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
-      {/* NAVBAR */}
-      <nav className="bg-[#F26E22] shadow-md">
-        <div className="max-w-6xl mx-auto flex justify-between items-center px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">⛽ Estación X</h1>
-        </div>
-      </nav>
 
       {/* LISTA DE SURTIDORES */}
       <section className="flex-1 max-w-5xl mx-auto mt-10 px-4 w-full">
