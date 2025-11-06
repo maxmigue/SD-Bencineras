@@ -5,6 +5,13 @@ import json
 surtidores = {}
 # Lista global de clientes conectados (writers)
 clientes_conectados = set()
+# Precios actuales de la estación (actualizados por la Empresa)
+precios_actuales = {
+    "precio_93": 1290,
+    "precio_95": 1350,
+    "precio_97": 1400,
+    "precio_diesel": 1120
+}
 
 async def manejar_surtidor(reader, writer):
     addr = writer.get_extra_info('peername')
@@ -21,6 +28,35 @@ async def manejar_surtidor(reader, writer):
 
             try:
                 mensaje = json.loads(data.decode())
+                
+                # 🔍 Detectar si es un mensaje de actualización de precios desde la Empresa
+                if mensaje.get("tipo") == "actualizacion_precios":
+                    print(f"💰 Actualización de precios recibida desde Empresa")
+                    nuevos_precios = mensaje.get("precios", {})
+                    
+                    # Actualizar precios globales de la estación
+                    precios_actuales.update(nuevos_precios)
+                    print(f"✅ Precios actualizados: {precios_actuales}")
+                    
+                    # 📡 Propagar los nuevos precios a todos los clientes (frontend vía WebSocket bridge)
+                    mensaje_propagacion = {
+                        "tipo": "actualizacion_precios",
+                        "timestamp": mensaje.get("timestamp"),
+                        "precios": precios_actuales
+                    }
+                    data_propagacion = (json.dumps(mensaje_propagacion) + "\n").encode()
+                    
+                    for cliente in list(clientes_conectados):
+                        try:
+                            cliente.write(data_propagacion)
+                            await cliente.drain()
+                        except Exception as e:
+                            print(f"⚠️ Error propagando precios a cliente: {e}")
+                            clientes_conectados.discard(cliente)
+                    
+                    continue  # No procesar como mensaje de surtidor
+                
+                # Mensaje normal de surtidor
                 surtidores[surtidor_id] = mensaje
                 print(f"📡 Estado recibido de {surtidor_id}: {mensaje}")
 
@@ -53,3 +89,25 @@ async def iniciar_tcp_servidor():
     print("🟢 Servidor TCP escuchando en 127.0.0.1:5000")
     async with server:
         await server.serve_forever()
+
+
+def obtener_precios_actuales():
+    """
+    Retorna los precios actuales de la estación
+    
+    Returns:
+        Diccionario con los precios actuales
+    """
+    return precios_actuales.copy()
+
+
+def actualizar_precios_locales(nuevos_precios: dict):
+    """
+    Actualiza manualmente los precios locales
+    Útil para testing o inicialización
+    
+    Args:
+        nuevos_precios: Diccionario con los nuevos precios
+    """
+    precios_actuales.update(nuevos_precios)
+    print(f"✅ Precios actualizados manualmente: {precios_actuales}")
