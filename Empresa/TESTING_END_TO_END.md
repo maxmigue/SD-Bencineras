@@ -10,9 +10,9 @@
 
 ### Ambiente de Testing
 
-- [ ] MongoDB corriendo (puerto 27017)
-- [ ] Backend Empresa corriendo (puerto 8000)
-- [ ] Frontend Empresa corriendo (puerto 3000)
+- [x] MongoDB corriendo (puerto 27017)
+- [x] Backend Empresa corriendo (puerto 8000)
+- [x] Frontend Empresa corriendo (puerto 3000)
 - [ ] Backend Estación corriendo (puerto 8001)
 - [ ] Frontend Estación corriendo (puerto 3001)
 - [ ] WebSocket Bridge Empresa (puerto 4000)

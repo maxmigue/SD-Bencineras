@@ -1,236 +1,241 @@
-"use client";
+﻿"use client"
 
 import { useState, useEffect } from "react";
-import { io } from "socket.io-client";
 import { Button } from "../components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "../components/ui/dialog";
-import { Input } from "../components/ui/input";
-import { PlusIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
+import { 
+  RocketIcon, 
+  ActivityLogIcon, 
+  GearIcon,
+  BarChartIcon 
+} from "@radix-ui/react-icons";
 
-// ✅ Conexión WebSocket establecida al iniciar
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function HomePage() {
-  const [surtidores, setSurtidores] = useState([]);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [form, setForm] = useState({ nombre: "", ip: "", puerto: "" });
+  const [estadisticas, setEstadisticas] = useState(null);
+  const [estaciones, setEstaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const socket = io("http://localhost:4000", {
-      reconnectionDelayMax: 10000,
-      reconnectionAttempts: 5,
-      transports: ["websocket", "polling"]
-    });
-  
-    socket.on("connect", () => {
-      console.log("✅ Conectado al WebSocket bridge");
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("❌ Error de conexión:", error);
-    });
-  
-    socket.on("estadoSurtidores", (data) => {
-      console.log("📡 Datos recibidos:", data);
-      if (Array.isArray(data)) {
-        setSurtidores(data);
-      } else if (data && typeof data === 'object') {
-        setSurtidores(prev => {
-          const exists = prev.find(s => s.id === data.id);
-          if (exists) {
-            return prev.map(s => s.id === data.id ? data : s);
-          }
-          return [...prev, data];
-        });
-      }
-    });
-  
-    socket.on("disconnect", (reason) => {
-      console.log("❌ Desconectado del WebSocket bridge:", reason);
-    });
-
-    return () => {
-      console.log("🔄 Limpiando conexión WebSocket");
-      socket.disconnect();
-    };
+    cargarDatos();
+    const interval = setInterval(cargarDatos, 30000);
+    return () => clearInterval(interval);
   }, []);
-  
 
-  // ✏️ Modal editar
-  const handleOpenEdit = (surtidor) => {
-    if (surtidor) {
-      setEditing(surtidor);
-      setForm(surtidor);
-    } else {
-      setEditing(null);
-      setForm({ nombre: "", ip: "", puerto: "" });
+  const cargarDatos = async () => {
+    try {
+      const responseStats = await fetch(`${API_URL}/api/estadisticas`);
+      if (responseStats.ok) {
+        const dataStats = await responseStats.json();
+        setEstadisticas(dataStats);
+      }
+
+      const responseEstaciones = await fetch(`${API_URL}/api/estaciones`);
+      if (responseEstaciones.ok) {
+        const dataEstaciones = await responseEstaciones.json();
+        setEstaciones(dataEstaciones.slice(0, 6));
+      }
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+    } finally {
+      setLoading(false);
     }
-    setOpenEdit(true);
   };
 
-  // 💾 Guardar o agregar
-  const handleSave = () => {
-    if (editing) {
-      setSurtidores((prev) =>
-        prev.map((s) => (s.id === editing.id ? { ...editing, ...form } : s))
-      );
-    } else {
-      const nuevo = {
-        id: Date.now(),
-        ...form,
-        estado: "Parado",
-        precios: { gasolina93: 0, gasolina95: 0, gasolina97: 0, diesel: 0 },
-      };
-      setSurtidores((prev) => [...prev, nuevo]);
+  const getEstadoBadgeClass = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case "activa":
+        return "bg-green-100 text-green-700";
+      case "inactiva":
+        return "bg-yellow-100 text-yellow-700";
+      case "desconectada":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-gray-100 text-gray-700";
     }
-    setOpenEdit(false);
-  };
-
-  // ❌ Eliminar
-  const confirmDelete = (id) => {
-    setDeleteId(id);
-    setOpenDelete(true);
-  };
-  const handleDelete = () => {
-    setSurtidores((prev) => prev.filter((s) => s.id !== deleteId));
-    setOpenDelete(false);
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-
-      {/* LISTA DE SURTIDORES */}
-      <section className="flex-1 max-w-5xl mx-auto mt-10 px-4 w-full">
-        <h2 className="font-poppins text-3xl font-bold text-gray-800 mb-6">
-          Surtidores en tiempo real
-        </h2>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {surtidores.map((s) => (
-            <div
-              key={s.id}
-              className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between"
-            >
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-1">
-                  {s.nombre || "Surtidor sin nombre"}
-                </h3>
-                {s.ip && (
-                  <p className="text-sm text-gray-500">IP: {s.ip}</p>
-                )}
-                {s.puerto && (
-                  <p className="text-sm text-gray-500 mb-3">Puerto: {s.puerto}</p>
-                )}
-
-                <span
-                  className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-                    s.estado?.toLowerCase().includes("cargando")
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {s.estado || "Desconocido"}
-                </span>
-
-                {/* Precios */}
-                {s.precios && (
-                  <div className="mt-4 border-t pt-3">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">
-                      Precios actuales:
-                    </p>
-                    <ul className="space-y-1 text-sm text-gray-600">
-                      <li>⛽ Gasolina 93: ${s.precios.gasolina93}</li>
-                      <li>⛽ Gasolina 95: ${s.precios.gasolina95}</li>
-                      <li>⛽ Gasolina 97: ${s.precios.gasolina97}</li>
-                      <li>🛢️ Diésel: ${s.precios.diesel}</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-            </div>
-          ))}
+    <main className="min-h-screen bg-gray-50">
+      <section className="bg-gradient-to-r from-[#F26E22] to-[#d65e1d] text-white py-16">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center gap-4 mb-4">
+            <RocketIcon className="w-12 h-12" />
+            <h1 className="text-4xl font-bold">
+              Sistema de GestiÃ³n Empresarial
+            </h1>
+          </div>
+          <p className="text-xl text-white/90 max-w-2xl">
+            Panel de control centralizado para administrar estaciones de servicio, 
+            actualizar precios en tiempo real y monitorear el sistema.
+          </p>
         </div>
       </section>
 
-      {/* DIALOG EDITAR */}
-      <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-gray-800">
-              {editing ? "Editar Surtidor" : "Agregar Surtidor"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-3">
-            <Input
-              placeholder="Nombre del surtidor"
-              value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            />
-            <Input
-              placeholder="Dirección IP"
-              value={form.ip}
-              onChange={(e) => setForm({ ...form, ip: e.target.value })}
-            />
-            <Input
-              placeholder="Puerto"
-              value={form.puerto}
-              onChange={(e) => setForm({ ...form, puerto: e.target.value })}
-            />
-            <div className="flex justify-end gap-3 pt-3">
-              <Button
-                variant="outline"
-                onClick={() => setOpenEdit(false)}
-                className="border-[#F26E22] text-[#F26E22] hover:bg-orange-50"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                className="bg-[#F26E22] hover:bg-[#d65e1d] text-white"
-              >
-                {editing ? "Guardar Cambios" : "Agregar"}
-              </Button>
+      <section className="max-w-7xl mx-auto px-6 -mt-8">
+        {loading ? (
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <p className="text-gray-500">Cargando datos...</p>
+          </div>
+        ) : estadisticas ? (
+          <div className="grid gap-6 md:grid-cols-4 mb-8">
+            <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-blue-500">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Total Estaciones</h3>
+                <BarChartIcon className="w-8 h-8 text-blue-500" />
+              </div>
+              <p className="text-3xl font-bold text-gray-800">
+                {estadisticas.total_estaciones}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-green-500">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Activas</h3>
+                <ActivityLogIcon className="w-8 h-8 text-green-500" />
+              </div>
+              <p className="text-3xl font-bold text-gray-800">
+                {estadisticas.activas}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-yellow-500">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Inactivas</h3>
+                <GearIcon className="w-8 h-8 text-yellow-500" />
+              </div>
+              <p className="text-3xl font-bold text-gray-800">
+                {estadisticas.inactivas}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-red-500">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Desconectadas</h3>
+                <ActivityLogIcon className="w-8 h-8 text-red-500" />
+              </div>
+              <p className="text-3xl font-bold text-gray-800">
+                {estadisticas.desconectadas}
+              </p>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : null}
+      </section>
 
-      {/* DIALOG ELIMINAR */}
-      <Dialog open={openDelete} onOpenChange={setOpenDelete}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-gray-800">
-              Confirmar eliminación
-            </DialogTitle>
-            <DialogDescription>
-              ¿Seguro que deseas eliminar este surtidor? Esta acción no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setOpenDelete(false)}
-              className="border-[#F26E22] text-[#F26E22] hover:bg-orange-50"
-            >
-              Cancelar
+      <section className="max-w-7xl mx-auto px-6 mb-12">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Accesos RÃ¡pidos</h2>
+        <div className="grid gap-6 md:grid-cols-3">
+          <Link href="/estaciones">
+            <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-8 cursor-pointer border-l-4 border-[#F26E22]">
+              <GearIcon className="w-12 h-12 text-[#F26E22] mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                GestiÃ³n de Estaciones
+              </h3>
+              <p className="text-gray-600">
+                Crear, editar y administrar estaciones de servicio
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/estaciones">
+            <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-8 cursor-pointer border-l-4 border-blue-500">
+              <BarChartIcon className="w-12 h-12 text-blue-500 mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Actualizar Precios
+              </h3>
+              <p className="text-gray-600">
+                Modificar precios y sincronizar con las estaciones
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/transacciones">
+            <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-8 cursor-pointer border-l-4 border-green-500">
+              <ActivityLogIcon className="w-12 h-12 text-green-500 mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Ver Transacciones
+              </h3>
+              <p className="text-gray-600">
+                Consultar historial de cambios y operaciones
+              </p>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-6 pb-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Estaciones Registradas</h2>
+          <Link href="/estaciones">
+            <Button className="bg-[#F26E22] hover:bg-[#d65e1d] text-white">
+              Ver Todas
             </Button>
-            <Button
-              onClick={handleDelete}
-              className="bg-[#F26E22] hover:bg-[#d65e1d] text-white"
-            >
-              Eliminar
-            </Button>
+          </Link>
+        </div>
+
+        {estaciones.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <p className="text-gray-500 mb-4">No hay estaciones registradas</p>
+            <Link href="/estaciones">
+              <Button className="bg-[#F26E22] hover:bg-[#d65e1d] text-white">
+                Crear Primera EstaciÃ³n
+              </Button>
+            </Link>
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {estaciones.map((estacion) => (
+              <div
+                key={estacion.id_estacion}
+                className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all p-6"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                      {estacion.nombre}
+                    </h3>
+                    <p className="text-sm text-gray-500">ID: {estacion.id_estacion}</p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 text-xs font-semibold rounded-full ${getEstadoBadgeClass(
+                      estacion.estado
+                    )}`}
+                  >
+                    {estacion.estado}
+                  </span>
+                </div>
+
+                <div className="mb-4 pb-4 border-b">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">IP:</span> {estacion.ip}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Puerto:</span> {estacion.puerto}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                  <div>â›½ 93: ${estacion.precios_actuales.precio_93}</div>
+                  <div>â›½ 95: ${estacion.precios_actuales.precio_95}</div>
+                  <div>â›½ 97: ${estacion.precios_actuales.precio_97}</div>
+                  <div>ðŸ›¢ï¸ Diesel: ${estacion.precios_actuales.precio_diesel}</div>
+                </div>
+
+                <Link href={`/estaciones`}>
+                  <Button
+                    className="w-full mt-4 bg-[#F26E22] hover:bg-[#d65e1d] text-white"
+                    size="sm"
+                  >
+                    Ver Detalles
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }
+
