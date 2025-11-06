@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 🎨 Colores de marca personalizados */
+:root {
+    --color-primary: #C1C9D9;
+  }
