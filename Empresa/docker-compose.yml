@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # MongoDB - Base de datos
+  mongodb:
+    image: mongo:7.0
+    container_name: empresa-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=bencineras_db
+    networks:
+      - empresa-network
+
+  # Backend - FastAPI + TCP Server + WebSocket Bridge
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: empresa-backend
+    restart: always
+    ports:
+      - "8000:8000"  # FastAPI
+      - "5000:5000"  # TCP Server
+      - "4000:4000"  # WebSocket Bridge
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=bencineras_db
+      - BACKEND_PORT=8000
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+    networks:
+      - empresa-network
+
+  # Frontend - Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: empresa-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=http://localhost:4000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - empresa-network
+
+networks:
+  empresa-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
