@@ -1,10 +1,15 @@
 import asyncio
 import json
+import socket
+from datetime import datetime
+from typing import Dict, Any
 
 # Mantendrá el estado actual de los surtidores conectados
 surtidores = {}
 # Lista global de clientes conectados (writers)
 clientes_conectados = set()
+# Registro de estaciones conectadas con su información
+estaciones_activas: Dict[str, Dict[str, Any]] = {}
 
 async def manejar_surtidor(reader, writer):
     addr = writer.get_extra_info('peername')
@@ -53,3 +58,91 @@ async def iniciar_tcp_servidor():
     print("🟢 Servidor TCP escuchando en 127.0.0.1:5000")
     async with server:
         await server.serve_forever()
+
+
+async def enviar_precios_a_estacion(ip: str, puerto: int, precios: Dict[str, int]) -> bool:
+    """
+    Envía los precios actualizados a una estación específica vía TCP
+    
+    Args:
+        ip: Dirección IP de la estación
+        puerto: Puerto TCP de la estación
+        precios: Diccionario con los precios actualizados
+        
+    Returns:
+        True si se envió exitosamente, False en caso de error
+    """
+    try:
+        # Crear mensaje con el formato esperado
+        mensaje = {
+            "tipo": "actualizacion_precios",
+            "timestamp": datetime.now().isoformat(),
+            "precios": precios
+        }
+        
+        # Conectar a la estación
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(ip, puerto),
+            timeout=5.0
+        )
+        
+        # Enviar mensaje JSON
+        mensaje_json = json.dumps(mensaje) + "\n"
+        writer.write(mensaje_json.encode())
+        await writer.drain()
+        
+        # Cerrar conexión
+        writer.close()
+        await writer.wait_closed()
+        
+        print(f"✅ Precios enviados exitosamente a {ip}:{puerto}")
+        
+        # Registrar la estación como activa
+        estaciones_activas[f"{ip}:{puerto}"] = {
+            "ip": ip,
+            "puerto": puerto,
+            "ultimo_envio": datetime.now().isoformat(),
+            "estado": "conectada"
+        }
+        
+        return True
+        
+    except asyncio.TimeoutError:
+        print(f"⏱️ Timeout al conectar con {ip}:{puerto}")
+        estaciones_activas[f"{ip}:{puerto}"] = {
+            "ip": ip,
+            "puerto": puerto,
+            "ultimo_envio": None,
+            "estado": "timeout"
+        }
+        return False
+        
+    except ConnectionRefusedError:
+        print(f"❌ Conexión rechazada por {ip}:{puerto} - Estación no disponible")
+        estaciones_activas[f"{ip}:{puerto}"] = {
+            "ip": ip,
+            "puerto": puerto,
+            "ultimo_envio": None,
+            "estado": "desconectada"
+        }
+        return False
+        
+    except Exception as e:
+        print(f"❌ Error enviando precios a {ip}:{puerto}: {type(e).__name__} - {e}")
+        estaciones_activas[f"{ip}:{puerto}"] = {
+            "ip": ip,
+            "puerto": puerto,
+            "ultimo_envio": None,
+            "estado": "error"
+        }
+        return False
+
+
+def obtener_estaciones_activas() -> Dict[str, Dict[str, Any]]:
+    """
+    Retorna el registro de estaciones activas y su estado de conexión
+    
+    Returns:
+        Diccionario con información de las estaciones
+    """
+    return estaciones_activas.copy()

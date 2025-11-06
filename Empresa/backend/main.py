@@ -23,7 +23,7 @@ from estaciones_service import (
     obtener_estadisticas
 )
 from database import verificar_conexion, cerrar_conexion
-from tcp_server import iniciar_tcp_servidor
+from tcp_server import iniciar_tcp_servidor, enviar_precios_a_estacion, obtener_estaciones_activas
 
 app = FastAPI(
     title="Backend Empresa Bencinera",
@@ -203,7 +203,7 @@ async def actualizar_precios_estacion(id_estacion: int, precios: PreciosUpdate):
     
     - Actualiza los precios actuales
     - Agrega una entrada al historial con timestamp
-    - Distribuye los nuevos precios a la estación (Fase 5)
+    - Distribuye automáticamente los nuevos precios a la estación vía TCP
     """
     try:
         estacion_actualizada = await actualizar_precios(id_estacion, precios)
@@ -214,12 +214,19 @@ async def actualizar_precios_estacion(id_estacion: int, precios: PreciosUpdate):
                 detail=f"Estación con ID {id_estacion} no encontrada"
             )
         
-        # TODO: Fase 5 - Enviar precios a la estación vía TCP
-        # await enviar_precios_a_estacion(
-        #     estacion_actualizada["ip"],
-        #     estacion_actualizada["puerto"],
-        #     precios.precios.model_dump()
-        # )
+        # 🚀 Fase 5 - Enviar precios a la estación vía TCP
+        envio_exitoso = await enviar_precios_a_estacion(
+            estacion_actualizada["ip"],
+            estacion_actualizada["puerto"],
+            precios.precios.model_dump()
+        )
+        
+        # Agregar información sobre el envío a la respuesta
+        estacion_actualizada["_envio_tcp"] = {
+            "exitoso": envio_exitoso,
+            "ip": estacion_actualizada["ip"],
+            "puerto": estacion_actualizada["puerto"]
+        }
         
         return estacion_actualizada
     
@@ -273,4 +280,24 @@ async def obtener_estadisticas_sistema():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al obtener estadísticas: {str(e)}"
+        )
+
+
+@app.get("/api/estaciones-activas", response_model=Dict[str, Any])
+async def listar_estaciones_activas():
+    """
+    Obtiene el estado de conexión TCP de las estaciones
+    
+    Muestra qué estaciones han sido contactadas recientemente y su estado
+    """
+    try:
+        activas = obtener_estaciones_activas()
+        return {
+            "total": len(activas),
+            "estaciones": activas
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener estaciones activas: {str(e)}"
         )
