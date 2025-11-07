@@ -63,7 +63,7 @@ export default function HomePage() {
           <div className="flex items-center gap-4 mb-4">
             <RocketIcon className="w-12 h-12" />
             <h1 className="text-4xl font-bold">
-              Sistema de GestiÃ³n Empresarial
+              Sistema de Gestión Empresarial
             </h1>
           </div>
           <p className="text-xl text-white/90 max-w-2xl">
@@ -124,13 +124,13 @@ export default function HomePage() {
       </section>
 
       <section className="max-w-7xl mx-auto px-6 mb-12">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Accesos RÃ¡pidos</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Accesos Rápidos</h2>
         <div className="grid gap-6 md:grid-cols-3">
           <Link href="/estaciones">
             <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-8 cursor-pointer border-l-4 border-[#F26E22]">
               <GearIcon className="w-12 h-12 text-[#F26E22] mb-4" />
               <h3 className="text-xl font-bold text-gray-800 mb-2">
-                GestiÃ³n de Estaciones
+                Gestión de Estaciones
               </h3>
               <p className="text-gray-600">
                 Crear, editar y administrar estaciones de servicio
@@ -179,7 +179,7 @@ export default function HomePage() {
             <p className="text-gray-500 mb-4">No hay estaciones registradas</p>
             <Link href="/estaciones">
               <Button className="bg-[#F26E22] hover:bg-[#d65e1d] text-white">
-                Crear Primera EstaciÃ³n
+                Crear Primera Estación
               </Button>
             </Link>
           </div>
@@ -216,10 +216,10 @@ export default function HomePage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                  <div>â›½ 93: ${estacion.precios_actuales.precio_93}</div>
-                  <div>â›½ 95: ${estacion.precios_actuales.precio_95}</div>
-                  <div>â›½ 97: ${estacion.precios_actuales.precio_97}</div>
-                  <div>ðŸ›¢ï¸ Diesel: ${estacion.precios_actuales.precio_diesel}</div>
+                  <div>Precio 93: ${estacion.precios_actuales.precio_93}</div>
+                  <div>Precio 95: ${estacion.precios_actuales.precio_95}</div>
+                  <div>Precio 97: ${estacion.precios_actuales.precio_97}</div>
+                  <div>Precio Diesel: ${estacion.precios_actuales.precio_diesel}</div>
                 </div>
 
                 <Link href={`/estaciones`}>

@@ -9,8 +9,8 @@ RUN apt-get update && \
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos del backend
-COPY . .
+# Copia primero los archivos de dependencias
+COPY requirements.txt package.json ./
 
 # Instala dependencias de Python
 RUN pip3 install --no-cache-dir -r requirements.txt
@@ -18,8 +18,15 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Instala dependencias de Node.js
 RUN npm install
 
+# Copia el resto de los archivos del backend
+COPY . .
+
+# Hacer ejecutable el script de inicio
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Expone los puertos necesarios
 EXPOSE 8000 4000 5000
 
-# Comando para iniciar FastAPI y el bridge
-CMD ["uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+# Comando para iniciar todos los servicios
+CMD ["/app/start.sh"]

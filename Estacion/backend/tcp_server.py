@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 
 # Mantendrá el estado actual de los surtidores conectados
 surtidores = {}
@@ -12,6 +13,8 @@ precios_actuales = {
     "precio_97": 1400,
     "precio_diesel": 1120
 }
+# Nombre de la estación (puede ser actualizado por la Empresa)
+nombre_estacion = os.getenv("ESTACION_NOMBRE", "Estación Local")
 
 async def manejar_surtidor(reader, writer):
     addr = writer.get_extra_info('peername')
@@ -38,12 +41,23 @@ async def manejar_surtidor(reader, writer):
                     precios_actuales.update(nuevos_precios)
                     print(f"✅ Precios actualizados: {precios_actuales}")
                     
+                    # Actualizar nombre si viene en el mensaje
+                    global nombre_estacion
+                    if mensaje.get("nombre_estacion"):
+                        nombre_estacion = mensaje.get("nombre_estacion")
+                        print(f"✅ Nombre actualizado: {nombre_estacion}")
+                    
                     # 📡 Propagar los nuevos precios a todos los clientes (frontend vía WebSocket bridge)
                     mensaje_propagacion = {
                         "tipo": "actualizacion_precios",
                         "timestamp": mensaje.get("timestamp"),
                         "precios": precios_actuales
                     }
+                    
+                    # Incluir nombre si fue actualizado
+                    if mensaje.get("nombre_estacion"):
+                        mensaje_propagacion["nombre_estacion"] = nombre_estacion
+                    
                     data_propagacion = (json.dumps(mensaje_propagacion) + "\n").encode()
                     
                     for cliente in list(clientes_conectados):
@@ -85,8 +99,8 @@ async def manejar_surtidor(reader, writer):
 
 async def iniciar_tcp_servidor():
     """Inicia el servidor TCP que recibe los estados de los surtidores."""
-    server = await asyncio.start_server(manejar_surtidor, "127.0.0.1", 5000)
-    print("🟢 Servidor TCP escuchando en 127.0.0.1:5000")
+    server = await asyncio.start_server(manejar_surtidor, "0.0.0.0", 5000)
+    print("🟢 Servidor TCP escuchando en 0.0.0.0:5000")
     async with server:
         await server.serve_forever()
 
@@ -99,6 +113,16 @@ def obtener_precios_actuales():
         Diccionario con los precios actuales
     """
     return precios_actuales.copy()
+
+
+def obtener_nombre_estacion():
+    """
+    Retorna el nombre actual de la estación
+    
+    Returns:
+        Nombre de la estación
+    """
+    return nombre_estacion
 
 
 def actualizar_precios_locales(nuevos_precios: dict):
