@@ -10,7 +10,7 @@ const WS_PORT = 4000;
 const httpServer = http.createServer();
 const io = new Server(httpServer, {
   cors: { 
-    origin: "http://localhost:3000", 
+    origin: ["http://localhost:3000", "http://localhost:3001"], 
     methods: ["GET", "POST"],
     transports: ['websocket', 'polling']
   },
@@ -18,6 +18,17 @@ const io = new Server(httpServer, {
 
 // ✅ Mantener un mapa global de surtidores activos
 const surtidores = new Map();
+
+// ✅ Mantener precios actuales de la estación
+let preciosActuales = {
+  precio_93: 1290,
+  precio_95: 1350,
+  precio_97: 1400,
+  precio_diesel: 1120
+};
+
+// ✅ Mantener nombre de la estación
+let nombreEstacion = "Estación Local";
 
 // Registrar conexiones del frontend
 io.on("connection", (socket) => {
@@ -27,6 +38,10 @@ io.on("connection", (socket) => {
   const estadoActual = Array.from(surtidores.values());
   console.log("📤 Enviando estado inicial al frontend:", estadoActual);
   socket.emit("estadoSurtidores", estadoActual);
+  
+  // Enviar precios actuales
+  console.log("💰 Enviando precios actuales al frontend:", preciosActuales);
+  socket.emit("actualizacionPrecios", preciosActuales);
 
   socket.on("disconnect", () => {
     console.log("❌ Frontend desconectado:", socket.id);
@@ -60,6 +75,28 @@ tcpClient.on("data", (data) => {
       const jsonValido = parte.replace(/'/g, '"');
       const parsed = JSON.parse(jsonValido);
 
+      // 🔍 Detectar actualización de precios desde Empresa
+      if (parsed.tipo === "actualizacion_precios") {
+        console.log("💰 Actualización de precios recibida desde Empresa");
+        preciosActuales = parsed.precios;
+        console.log("✅ Precios actualizados:", preciosActuales);
+        
+        // Actualizar nombre si viene en el mensaje
+        if (parsed.nombre_estacion) {
+          nombreEstacion = parsed.nombre_estacion;
+          console.log("✅ Nombre actualizado:", nombreEstacion);
+        }
+        
+        // 📡 Propagar los nuevos precios y nombre a todos los clientes conectados
+        io.emit("actualizacionPrecios", preciosActuales);
+        if (parsed.nombre_estacion) {
+          io.emit("actualizacionNombre", nombreEstacion);
+        }
+        console.log("📤 Precios propagados al frontend");
+        return;
+      }
+
+      // Mensaje normal de surtidor
       const surtidor = {
         id: parsed.id,
         nombre: parsed.nombre,

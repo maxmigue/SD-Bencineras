@@ -218,7 +218,8 @@ async def actualizar_precios_estacion(id_estacion: int, precios: PreciosUpdate):
         envio_exitoso = await enviar_precios_a_estacion(
             estacion_actualizada["ip"],
             estacion_actualizada["puerto"],
-            precios.precios.model_dump()
+            precios.precios.model_dump(),
+            estacion_actualizada.get("nombre")
         )
         
         # Agregar información sobre el envío a la respuesta

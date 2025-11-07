@@ -13,9 +13,12 @@ import {
 import { Input } from "../components/ui/input";
 import { PlusIcon } from "@radix-ui/react-icons";
 
+import { useEstacion } from "../contexts/EstacionContext";
+
 // ✅ Conexión WebSocket establecida al iniciar
 export default function HomePage() {
   const [surtidores, setSurtidores] = useState([]);
+  const { nombreEstacion, precios } = useEstacion();
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -23,7 +26,7 @@ export default function HomePage() {
   const [form, setForm] = useState({ nombre: "", ip: "", puerto: "" });
 
   useEffect(() => {
-    const socket = io("http://localhost:4000", {
+    const socket = io("http://localhost:4001", {
       reconnectionDelayMax: 10000,
       reconnectionAttempts: 5,
       transports: ["websocket", "polling"]
@@ -105,6 +108,39 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
+
+      {/* TARJETA DE PRECIOS ACTUALES */}
+      <section className="max-w-5xl mx-auto mt-10 px-4 w-full">
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
+          <h2 className="font-poppins text-2xl font-bold mb-2">
+            {nombreEstacion}
+          </h2>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-lg">💰 Precios Actuales</span>
+            <span className="text-sm font-normal bg-white/20 px-3 py-1 rounded-full">
+              En tiempo real
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <p className="text-sm font-medium mb-1">Gasolina 93</p>
+              <p className="text-3xl font-bold">${precios.precio_93}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <p className="text-sm font-medium mb-1">Gasolina 95</p>
+              <p className="text-3xl font-bold">${precios.precio_95}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <p className="text-sm font-medium mb-1">Gasolina 97</p>
+              <p className="text-3xl font-bold">${precios.precio_97}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <p className="text-sm font-medium mb-1">Diésel</p>
+              <p className="text-3xl font-bold">${precios.precio_diesel}</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* LISTA DE SURTIDORES */}
       <section className="flex-1 max-w-5xl mx-auto mt-10 px-4 w-full">

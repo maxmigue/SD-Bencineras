@@ -60,7 +60,7 @@ async def iniciar_tcp_servidor():
         await server.serve_forever()
 
 
-async def enviar_precios_a_estacion(ip: str, puerto: int, precios: Dict[str, int]) -> bool:
+async def enviar_precios_a_estacion(ip: str, puerto: int, precios: Dict[str, int], nombre_estacion: str = None) -> bool:
     """
     Envía los precios actualizados a una estación específica vía TCP
     
@@ -68,6 +68,7 @@ async def enviar_precios_a_estacion(ip: str, puerto: int, precios: Dict[str, int
         ip: Dirección IP de la estación
         puerto: Puerto TCP de la estación
         precios: Diccionario con los precios actualizados
+        nombre_estacion: Nombre de la estación (opcional)
         
     Returns:
         True si se envió exitosamente, False en caso de error
@@ -79,6 +80,12 @@ async def enviar_precios_a_estacion(ip: str, puerto: int, precios: Dict[str, int
             "timestamp": datetime.now().isoformat(),
             "precios": precios
         }
+        
+        # Agregar nombre si está disponible
+        if nombre_estacion:
+            mensaje["nombre_estacion"] = nombre_estacion
+        
+        print(f"📤 Enviando mensaje TCP: {mensaje}")
         
         # Conectar a la estación
         reader, writer = await asyncio.wait_for(
