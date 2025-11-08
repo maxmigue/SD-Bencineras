@@ -28,5 +28,11 @@ RUN find /app -type f -name "*.sh" -exec sed -i 's/\r$//' {} \; && \
 # Expone los puertos necesarios
 EXPOSE 8000 4000 5000
 
+# Usar un script wrapper que asegure la conversión de líneas
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'sed -i "s/\r$//" /app/start.sh 2>/dev/null || true' >> /entrypoint.sh && \
+    echo 'exec /bin/bash /app/start.sh' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
 # Comando para iniciar todos los servicios
-CMD ["/bin/bash", "/app/start.sh"]
+CMD ["/bin/bash", "/entrypoint.sh"]

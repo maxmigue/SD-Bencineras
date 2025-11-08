@@ -210,6 +210,7 @@ async def procesar_mensaje_surtidor(id_surtidor: int, mensaje: dict):
 async def guardar_transaccion(id_surtidor: int, datos: dict):
     """
     Guarda una transacción completada en la base de datos
+    y la propaga al frontend en tiempo real
     
     Args:
         id_surtidor: ID del surtidor
@@ -236,6 +237,7 @@ async def guardar_transaccion(id_surtidor: int, datos: dict):
         
         # Insertar transacción
         resultado = await db.transacciones.insert_one(transaccion)
+        transaccion["_id"] = str(resultado.inserted_id)
         
         # Actualizar estadísticas del surtidor
         await actualizar_estadisticas_surtidor(
@@ -246,8 +248,56 @@ async def guardar_transaccion(id_surtidor: int, datos: dict):
         
         print(f"✅ Transacción guardada: {resultado.inserted_id} - {datos.get('litros')}L - ${datos.get('monto_total')}")
         
+        # 📡 Propagar transacción al frontend en tiempo real
+        await propagar_transaccion_a_frontend(transaccion)
+        
     except Exception as e:
         print(f"❌ Error guardando transacción: {e}")
+
+
+async def propagar_transaccion_a_frontend(transaccion: dict):
+    """
+    Envía la transacción al WebSocket bridge para notificar al frontend en tiempo real
+    
+    Args:
+        transaccion: Datos de la transacción completada
+    """
+    try:
+        from tcp_server import clientes_conectados
+        
+        # Preparar mensaje para el bridge
+        mensaje = {
+            "tipo": "nueva_transaccion",
+            "transaccion": {
+                "_id": transaccion.get("_id"),
+                "surtidor_id": transaccion.get("surtidor_id"),
+                "nombre_surtidor": transaccion.get("nombre_surtidor"),
+                "tipo_combustible": transaccion.get("tipo_combustible"),
+                "litros": transaccion.get("litros"),
+                "precio_por_litro": transaccion.get("precio_por_litro"),
+                "monto_total": transaccion.get("monto_total"),
+                "metodo_pago": transaccion.get("metodo_pago"),
+                "fecha": transaccion.get("fecha").isoformat() if isinstance(transaccion.get("fecha"), datetime) else str(transaccion.get("fecha")),
+                "estado": transaccion.get("estado")
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        data = (json.dumps(mensaje) + "\n").encode()
+        
+        # Enviar a todos los clientes del WebSocket bridge
+        for cliente in list(clientes_conectados):
+            try:
+                cliente.write(data)
+                await cliente.drain()
+            except Exception as e:
+                print(f"⚠️ Error propagando transacción a cliente: {e}")
+                clientes_conectados.discard(cliente)
+        
+        print(f"📡 Transacción propagada al frontend: {transaccion.get('surtidor_id')} - ${transaccion.get('monto_total')}")
+        
+    except Exception as e:
+        print(f"⚠️ Error propagando transacción al frontend: {e}")
 
 
 async def propagar_precios_a_surtidores(nuevos_precios: dict):

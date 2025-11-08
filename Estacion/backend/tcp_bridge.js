@@ -96,6 +96,16 @@ tcpClient.on("data", (data) => {
         return;
       }
 
+      // 🔍 Detectar nueva transacción desde Surtidor
+      if (parsed.tipo === "nueva_transaccion") {
+        console.log("💳 Nueva transacción recibida:", parsed.transaccion);
+        
+        // 📡 Propagar la transacción a todos los clientes conectados
+        io.emit("nuevaTransaccion", parsed.transaccion);
+        console.log("📤 Transacción propagada al frontend");
+        return;
+      }
+
       // Mensaje normal de surtidor
       const surtidor = {
         id: parsed.id,

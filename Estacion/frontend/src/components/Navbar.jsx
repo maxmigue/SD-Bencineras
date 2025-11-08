@@ -13,11 +13,22 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto flex justify-between items-center px-6 py-4">
         <h1 className="text-2xl font-bold text-white">⛽ {nombreEstacion}</h1>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <Link
             href="/"
             className={`text-sm font-medium transition-colors ${
               pathname === "/"
+                ? "underline text-white"
+                : "text-white/80 hover:text-white"
+            }`}
+          >
+            Inicio
+          </Link>
+
+          <Link
+            href="/surtidores"
+            className={`text-sm font-medium transition-colors ${
+              pathname.startsWith("/surtidores")
                 ? "underline text-white"
                 : "text-white/80 hover:text-white"
             }`}
