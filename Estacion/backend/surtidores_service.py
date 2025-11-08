@@ -9,21 +9,30 @@ from database import obtener_database
 from bson import ObjectId
 
 
-async def crear_surtidor(surtidor: SurtidorCreate) -> Dict[str, Any]:
+async def crear_surtidor(surtidor: SurtidorCreate, id_surtidor_manual: Optional[int] = None) -> Dict[str, Any]:
     """
     Crea un nuevo surtidor en la base de datos
     
     Args:
         surtidor: Datos del surtidor a crear
+        id_surtidor_manual: ID específico para el surtidor (usado en auto-registro)
         
     Returns:
         Diccionario con los datos del surtidor creado
     """
     db = obtener_database()
     
-    # Generar ID único autoincrementado
-    ultimo_surtidor = await db.surtidores.find_one(sort=[("id_surtidor", -1)])
-    nuevo_id = 1 if ultimo_surtidor is None else ultimo_surtidor["id_surtidor"] + 1
+    # Usar ID manual si se proporciona, sino auto-incrementar
+    if id_surtidor_manual is not None:
+        nuevo_id = id_surtidor_manual
+        # Verificar que no exista
+        existente = await db.surtidores.find_one({"id_surtidor": nuevo_id})
+        if existente:
+            raise ValueError(f"Ya existe un surtidor con ID {nuevo_id}")
+    else:
+        # Generar ID único autoincrementado
+        ultimo_surtidor = await db.surtidores.find_one(sort=[("id_surtidor", -1)])
+        nuevo_id = 1 if ultimo_surtidor is None else ultimo_surtidor["id_surtidor"] + 1
     
     # Preparar documento
     surtidor_dict = {

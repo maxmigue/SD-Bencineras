@@ -55,6 +55,8 @@ async def manejar_conexion_surtidor(reader: asyncio.StreamReader, writer: asynci
             return
         
         id_surtidor = registro.get("id_surtidor")
+        nombre_surtidor = registro.get("nombre", f"Surtidor {id_surtidor}")
+        combustibles_soportados = registro.get("combustibles_soportados", ["93", "95", "97", "diesel"])
         
         if not id_surtidor:
             print(f"⚠️ Registro sin id_surtidor: {registro}")
@@ -62,22 +64,37 @@ async def manejar_conexion_surtidor(reader: asyncio.StreamReader, writer: asynci
             await writer.wait_closed()
             return
         
-        # Verificar que el surtidor existe en la BD
+        # Verificar si el surtidor existe en la BD
         surtidor = await obtener_surtidor_por_id(id_surtidor)
         
         if not surtidor:
-            print(f"❌ Surtidor {id_surtidor} no registrado en la BD")
-            # Enviar error
-            error_msg = {
-                "tipo": "error",
-                "codigo": "SURTIDOR_NO_REGISTRADO",
-                "mensaje": f"Surtidor {id_surtidor} no existe. Debe registrarse primero en la estación."
-            }
-            writer.write((json.dumps(error_msg) + "\n").encode())
-            await writer.drain()
-            writer.close()
-            await writer.wait_closed()
-            return
+            # AUTO-REGISTRO: Crear el surtidor automáticamente
+            print(f"🆕 Surtidor {id_surtidor} no existe, creando automáticamente...")
+            from surtidores_service import crear_surtidor
+            from models import SurtidorCreate
+            
+            nuevo_surtidor = SurtidorCreate(
+                nombre=nombre_surtidor,
+                combustibles_soportados=combustibles_soportados,
+                combustible_actual=combustibles_soportados[0] if combustibles_soportados else "95",
+                capacidad_maxima=100.0
+            )
+            
+            try:
+                surtidor = await crear_surtidor(nuevo_surtidor, id_surtidor_manual=id_surtidor)
+                print(f"✅ Surtidor {id_surtidor} ({nombre_surtidor}) creado y registrado automáticamente")
+            except Exception as e:
+                print(f"❌ Error creando surtidor {id_surtidor}: {e}")
+                error_msg = {
+                    "tipo": "error",
+                    "codigo": "ERROR_AUTO_REGISTRO",
+                    "mensaje": f"No se pudo crear el surtidor: {str(e)}"
+                }
+                writer.write((json.dumps(error_msg) + "\n").encode())
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
+                return
         
         print(f"✅ Surtidor {id_surtidor} ({surtidor['nombre']}) conectado vía TCP")
         

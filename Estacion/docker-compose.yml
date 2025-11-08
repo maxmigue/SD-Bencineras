@@ -15,7 +15,7 @@ services:
     networks:
       - estacion-network
 
-  # Backend - FastAPI + TCP Server + WebSocket Bridge
+  # Backend - FastAPI + TCP/UDP Servers + WebSocket Bridge
   backend:
     build:
       context: ./backend
@@ -23,14 +23,17 @@ services:
     container_name: estacion-backend
     restart: always
     ports:
-      - "8001:8000"  # FastAPI (diferente al de Empresa)
-      - "5001:5000"  # TCP Server para recibir actualizaciones de Empresa
+      - "8001:8000"  # FastAPI
+      - "5001:5000"  # TCP Server para recibir de Empresa
+      - "6001:6000"  # TCP Server para Surtidores
+      - "6002:6001"  # UDP Server para Surtidores (estados rápidos)
       - "4001:4000"  # WebSocket Bridge
     environment:
       - MONGODB_URL=mongodb://mongodb:27017
       - DATABASE_NAME=estacion_db
       - BACKEND_PORT=8000
       - FRONTEND_URL=http://localhost:3001
+      - ESTACION_NOMBRE=Estación Central
     depends_on:
       - mongodb
     volumes:
@@ -48,7 +51,7 @@ services:
     container_name: estacion-frontend
     restart: always
     ports:
-      - "3001:3000"  # Puerto diferente al de Empresa (3000)
+      - "3001:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8001
       - NEXT_PUBLIC_WS_URL=http://localhost:4001
@@ -58,6 +61,115 @@ services:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
+    networks:
+      - estacion-network
+
+  # ============================================
+  # SURTIDORES - Backend + Frontend
+  # ============================================
+  
+  # Surtidor 1
+  surtidor1-backend:
+    build:
+      context: ../Surtidor/backend
+      dockerfile: Dockerfile
+    container_name: surtidor1-backend
+    restart: always
+    ports:
+      - "8002:8000"  # FastAPI
+    environment:
+      - ESTACION_HOST=estacion-backend
+      - ESTACION_TCP_PORT=6000
+      - ESTACION_UDP_PORT=6001
+      - ID_SURTIDOR=1
+      - NOMBRE_SURTIDOR=Surtidor Norte 1
+    depends_on:
+      - backend
+    networks:
+      - estacion-network
+
+  surtidor1-frontend:
+    build:
+      context: ../Surtidor/frontend
+      dockerfile: Dockerfile
+    container_name: surtidor1-frontend
+    restart: always
+    ports:
+      - "3002:3000"  # Frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8002
+    depends_on:
+      - surtidor1-backend
+    networks:
+      - estacion-network
+
+  # Surtidor 2
+  surtidor2-backend:
+    build:
+      context: ../Surtidor/backend
+      dockerfile: Dockerfile
+    container_name: surtidor2-backend
+    restart: always
+    ports:
+      - "8003:8000"  # FastAPI
+    environment:
+      - ESTACION_HOST=estacion-backend
+      - ESTACION_TCP_PORT=6000
+      - ESTACION_UDP_PORT=6001
+      - ID_SURTIDOR=2
+      - NOMBRE_SURTIDOR=Surtidor Sur 1
+    depends_on:
+      - backend
+    networks:
+      - estacion-network
+
+  surtidor2-frontend:
+    build:
+      context: ../Surtidor/frontend
+      dockerfile: Dockerfile
+    container_name: surtidor2-frontend
+    restart: always
+    ports:
+      - "3003:3000"  # Frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8003
+    depends_on:
+      - surtidor2-backend
+    networks:
+      - estacion-network
+
+  # Surtidor 3
+  surtidor3-backend:
+    build:
+      context: ../Surtidor/backend
+      dockerfile: Dockerfile
+    container_name: surtidor3-backend
+    restart: always
+    ports:
+      - "8004:8000"  # FastAPI
+    environment:
+      - ESTACION_HOST=estacion-backend
+      - ESTACION_TCP_PORT=6000
+      - ESTACION_UDP_PORT=6001
+      - ID_SURTIDOR=3
+      - NOMBRE_SURTIDOR=Surtidor Este 1
+    depends_on:
+      - backend
+    networks:
+      - estacion-network
+
+  surtidor3-frontend:
+    build:
+      context: ../Surtidor/frontend
+      dockerfile: Dockerfile
+    container_name: surtidor3-frontend
+    restart: always
+    ports:
+      - "3004:3000"  # Frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8004
+    depends_on:
+      - surtidor3-backend
     networks:
       - estacion-network
 

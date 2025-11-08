@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const API_URL = "http://localhost:8000"; // URL del backend del surtidor
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
 
 export default function SurtidorPage() {
   const [estado, setEstado] = useState(null);
@@ -74,9 +74,10 @@ export default function SurtidorPage() {
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">{estado?.nombre}</h1>
           <p className={`text-lg font-semibold mt-2 ${
-            estado?.estado === "Cargando combustible" ? "text-green-500" : "text-gray-500"
+            estado?.estado_operacion === "despachando" ? "text-green-500" : "text-gray-500"
           }`}>
-            {estado?.estado}
+            {estado?.estado_operacion === "despachando" ? "Despachando" : 
+             estado?.estado_operacion === "pausado" ? "Pausado" : "Disponible"}
           </p>
         </div>
 
@@ -94,25 +95,25 @@ export default function SurtidorPage() {
         <div className="text-center mb-8">
           <p className="text-xl text-gray-600">Litros Despachados</p>
           <p className="text-6xl font-bold text-blue-600 my-2">
-            {estado?.litros_despachados.toFixed(2)}
+            {estado?.litros_actuales?.toFixed(2) || "0.00"}
           </p>
           <p className="text-xl text-gray-600">Total a Pagar</p>
           <p className="text-4xl font-bold text-green-600">
-            ${estado?.total_cobrado.toFixed(2)}
+            ${estado?.monto_actual?.toFixed(2) || "0.00"}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => handleControl("iniciar-carga")}
-            disabled={estado?.estado === "Cargando combustible"}
+            disabled={estado?.estado_operacion === "despachando"}
             className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 disabled:bg-gray-300 transition-colors"
           >
             Iniciar Carga
           </button>
           <button
-            onClick={() => handleControl("detener-carga")}
-            disabled={estado?.estado !== "Cargando combustible"}
+            onClick={() => handleControl("detener-carga?metodo_pago=efectivo")}
+            disabled={estado?.estado_operacion !== "despachando"}
             className="w-full bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 disabled:bg-gray-300 transition-colors"
           >
             Detener Carga
