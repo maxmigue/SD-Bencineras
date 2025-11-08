@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # MongoDB - Base de datos de transacciones
+  mongodb:
+    image: mongo:7.0
+    container_name: estacion2-mongodb
+    restart: always
+    ports:
+      - "27019:27017"  # Puerto único para Estacion2
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=estacion2_db
+    networks:
+      - estacion2-network
+
+  # Backend - FastAPI + TCP Server + WebSocket Bridge
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: estacion2-backend
+    restart: always
+    ports:
+      - "8002:8000"  # FastAPI - Puerto único
+      - "5002:5000"  # TCP Server - Puerto único
+      - "4002:4000"  # WebSocket Bridge - Puerto único
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=estacion2_db
+      - BACKEND_PORT=8000
+      - FRONTEND_URL=http://localhost:3002
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - /app/__pycache__
+    networks:
+      - estacion2-network
+
+  # Frontend - Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: estacion2-frontend
+    restart: always
+    ports:
+      - "3002:3000"  # Puerto único para Estacion2
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8002
+      - NEXT_PUBLIC_WS_URL=http://localhost:4002
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - estacion2-network
+
+networks:
+  estacion2-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

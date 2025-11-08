@@ -117,13 +117,7 @@ async def crear_nueva_estacion(estacion: EstacionCreate):
     - Agrega los precios iniciales al historial
     """
     try:
-        # Validar que la IP no exista
-        if await verificar_ip_existente(estacion.ip):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ya existe una estación con la IP {estacion.ip}"
-            )
-        
+        # Se permite que múltiples estaciones tengan la misma IP
         estacion_creada = await crear_estacion(estacion)
         return estacion_creada
     
@@ -144,14 +138,7 @@ async def actualizar_datos_estacion(id_estacion: int, datos: EstacionUpdate):
     Para actualizar precios, usar el endpoint /api/estaciones/{id}/precios
     """
     try:
-        # Si se está actualizando la IP, validar que no exista
-        if datos.ip is not None:
-            if await verificar_ip_existente(datos.ip, excluir_id=id_estacion):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ya existe otra estación con la IP {datos.ip}"
-                )
-        
+        # Se permite que múltiples estaciones tengan la misma IP
         estacion_actualizada = await actualizar_estacion(id_estacion, datos)
         
         if not estacion_actualizada:

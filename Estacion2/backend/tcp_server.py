@@ -68,14 +68,6 @@ async def manejar_surtidor(reader, writer):
                             print(f"⚠️ Error propagando precios a cliente: {e}")
                             clientes_conectados.discard(cliente)
                     
-                    # 🆕 NUEVO: Propagar precios a todos los SURTIDORES conectados
-                    try:
-                        from tcp_server_surtidores import propagar_precios_a_surtidores
-                        await propagar_precios_a_surtidores(precios_actuales)
-                        print(f"✅ Precios propagados a surtidores")
-                    except Exception as e:
-                        print(f"⚠️ Error propagando precios a surtidores: {e}")
-                    
                     continue  # No procesar como mensaje de surtidor
                 
                 # Mensaje normal de surtidor
